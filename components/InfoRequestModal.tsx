@@ -76,15 +76,29 @@ const InfoRequestModal: React.FC<InfoRequestModalProps> = ({ isOpen, onClose, pr
                         </div>
                     </form>
                 ) : (
-                    <div className="p-8 text-center">
-                       <CheckCircleIcon className="w-16 h-16 text-teal-500 mx-auto" />
-                       <h2 className="text-3xl font-display text-gray-800 mt-4">Pedido Enviado!</h2>
-                       <p className="text-gray-600 mt-4 mb-8 max-w-md mx-auto">
-                           Sua solicitação de informações para <strong>{property?.title}</strong> foi enviada.
-                           Nossa equipe entrará em contato em breve com todos os detalhes.
+                     <div className="p-8 text-left">
+                       <div className="flex justify-center mb-4">
+                          <CheckCircleIcon className="w-16 h-16 text-teal-500 mx-auto" />
+                       </div>
+                       <h2 className="text-3xl font-display text-gray-800 mt-4 text-center">Pedido Enviado!</h2>
+                       <p className="text-gray-600 mt-2 mb-6 text-center">
+                           Estamos preparando um material completo para você.
                        </p>
+
+                       <div className="bg-gray-100 p-4 rounded-lg space-y-4 text-gray-700">
+                         <h3 className="font-bold text-lg text-gray-800 text-center">E agora?</h3>
+                         <div>
+                            <h4 className="font-bold">Material a Caminho</h4>
+                            <p className="text-sm">Nossa equipe está compilando todas as informações sobre <strong>{property?.title}</strong> e enviará para seu e-mail e/ou WhatsApp em breve.</p>
+                         </div>
+                         <div>
+                            <h4 className="font-bold">Fique de Olho</h4>
+                            <p className="text-sm">Dica: Verifique sua caixa de spam caso não receba nosso contato em algumas horas. Estamos ansiosos para te ajudar a encontrar seu novo lar!</p>
+                         </div>
+                       </div>
+                       
                        <div className="mt-8 flex justify-center">
-                           <button onClick={handleClose} className="px-8 py-3 rounded-lg text-white bg-teal-600 hover:bg-teal-700 font-semibold transition-colors">Fechar</button>
+                           <button onClick={handleClose} className="w-full px-8 py-3 rounded-lg text-white bg-teal-600 hover:bg-teal-700 font-semibold transition-colors">Entendido, obrigado!</button>
                        </div>
                     </div>
                 )}
