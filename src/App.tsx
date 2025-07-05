@@ -5,7 +5,6 @@ import Spinner from './components/Spinner';
 import PropertyCard from './components/PropertyCard';
 import SchedulingModal from './components/SchedulingModal';
 import InfoRequestModal from './components/InfoRequestModal';
-import ComparisonModal from './components/ComparisonModal';
 
 const initialPreferences: Preferences = {
   name: '',
@@ -41,9 +40,6 @@ const App: React.FC = () => {
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
   const [propertyForInfoRequest, setPropertyForInfoRequest] = useState<Property | null>(null);
 
-  const [comparisonList, setComparisonList] = useState<Property[]>([]);
-  const [isComparisonModalOpen, setIsComparisonModalOpen] = useState(false);
-
   const [isRefineSearchOpen, setIsRefineSearchOpen] = useState(false);
 
   const handleNext = () => setStep(prev => prev + 1);
@@ -56,7 +52,6 @@ const App: React.FC = () => {
   
   const handleBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    // Remove all non-digit characters
     const digits = value.replace(/\D/g, '');
     const numberValue = digits ? parseInt(digits, 10) : 0;
     
@@ -84,7 +79,6 @@ const App: React.FC = () => {
   const handleFindProperties = async () => {
     setIsLoading(true);
     setError(null);
-    setComparisonList([]);
     setListings([]);
     setSimilarListings([]);
     try {
@@ -92,7 +86,7 @@ const App: React.FC = () => {
       const properties = await generatePropertyListings(preferences, setLoadingMessage);
       setListings(properties);
       setStep(6); 
-      setIsRefineSearchOpen(window.innerWidth > 768); // Open on desktop by default
+      setIsRefineSearchOpen(window.innerWidth > 768);
 
       const similarProps = await generateSimilarListings(preferences, properties, setLoadingMessage);
       setSimilarListings(similarProps);
@@ -109,7 +103,6 @@ const App: React.FC = () => {
   const handleRefineSearch = async () => {
     setIsLoading(true);
     setError(null);
-    setComparisonList([]);
     setListings([]);
     setSimilarListings([]);
     try {
@@ -149,36 +142,17 @@ const App: React.FC = () => {
     setTimeout(() => setPropertyForInfoRequest(null), 300);
   };
 
-  const handleToggleCompare = (property: Property) => {
-    setComparisonList(prev => {
-      const isInList = prev.some(p => p.id === property.id);
-      if (isInList) {
-        return prev.filter(p => p.id !== property.id);
-      }
-      if (prev.length < 3) {
-        return [...prev, property];
-      }
-      alert("Você pode comparar no máximo 3 imóveis por vez.");
-      return prev;
-    });
-  };
-  
-  const handleRemoveFromComparison = (propertyId: string) => {
-    setComparisonList(prev => prev.filter(p => p.id !== propertyId));
-  };
-
   const resetSearch = () => {
     setStep(1);
     setListings([]);
     setSimilarListings([]);
     setPreferences(initialPreferences);
-    setComparisonList([]);
     setError(null);
   };
 
   const renderStep = () => {
     switch (step) {
-      case 1: // Welcome & Name
+      case 1:
         return (
           <div>
             <h2 className="text-4xl font-display mb-4">Bem-vindo(a) ao Vibbi</h2>
@@ -189,93 +163,54 @@ const App: React.FC = () => {
             </div>
           </div>
         );
-      case 2: // Intention & Property Type
+      case 2:
         return (
           <div>
             <h2 className="text-4xl font-display mb-2">Prazer, {preferences.name}!</h2>
             <p className="text-lg text-gray-600 mb-8">Nos conte, qual o seu objetivo e que tipo de imóvel você busca?</p>
-
             <div className="space-y-6">
                 <div>
                     <h3 className="text-xl font-bold mb-3">Sua pretensão é...</h3>
                     <div className="flex space-x-4">
                       {(['Comprar', 'Alugar'] as const).map(intention => (
-                        <button
-                          key={intention}
-                          onClick={() => setPreferences(p => ({ ...p, intention }))}
-                          className={`w-full p-4 rounded-lg border-2 text-lg font-bold transition-colors ${
-                            preferences.intention === intention
-                              ? 'bg-amber-500 text-white border-amber-500'
-                              : 'bg-white hover:bg-amber-50 border-gray-300'
-                          }`}
-                        >
+                        <button key={intention} onClick={() => setPreferences(p => ({ ...p, intention }))} className={`w-full p-4 rounded-lg border-2 text-lg font-bold transition-colors ${ preferences.intention === intention ? 'bg-amber-500 text-white border-amber-500' : 'bg-white hover:bg-amber-50 border-gray-300' }`} >
                           {intention}
                         </button>
                       ))}
                     </div>
                 </div>
-
                 <div>
                     <h3 className="text-xl font-bold mb-3">E o tipo de imóvel é...</h3>
                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                         {propertyTypeOptions.map(opt => (
-                           <button
-                            key={opt}
-                            onClick={() => setPreferences(p => ({ ...p, propertyType: opt, otherPropertyType: '' }))}
-                            className={`flex items-center justify-center text-center space-x-3 p-3 border-2 rounded-lg cursor-pointer transition-colors ${
-                              preferences.propertyType === opt
-                                ? 'bg-amber-500 text-white border-amber-500 font-semibold'
-                                : 'bg-white hover:bg-amber-50 border-gray-300'
-                            }`}
-                          >
+                           <button key={opt} onClick={() => setPreferences(p => ({ ...p, propertyType: opt, otherPropertyType: '' }))} className={`flex items-center justify-center text-center space-x-3 p-3 border-2 rounded-lg cursor-pointer transition-colors ${ preferences.propertyType === opt ? 'bg-amber-500 text-white border-amber-500 font-semibold' : 'bg-white hover:bg-amber-50 border-gray-300' }`}>
                             <span>{opt}</span>
                           </button>
                         ))}
                     </div>
                     <div className="mt-4">
-                      <input 
-                        type="text" 
-                        name="otherPropertyType" 
-                        value={preferences.otherPropertyType} 
-                        onChange={handleChange}
-                        onFocus={() => setPreferences(p => ({...p, propertyType: 'Outro'}))}
-                        placeholder="Outro tipo? Descreva aqui." 
-                        className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-amber-400 focus:border-amber-400" 
-                      />
+                      <input type="text" name="otherPropertyType" value={preferences.otherPropertyType} onChange={handleChange} onFocus={() => setPreferences(p => ({...p, propertyType: 'Outro'}))} placeholder="Outro tipo? Descreva aqui." className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-amber-400 focus:border-amber-400" />
                     </div>
                 </div>
             </div>
-
             <div className="fixed bottom-0 left-0 right-0 z-10 bg-white p-4 border-t border-gray-200 md:relative md:bg-transparent md:p-0 md:border-none md:mt-8 flex justify-between space-x-4">
               <button onClick={handleBack} className="w-1/2 bg-gray-200 text-gray-800 font-bold py-4 px-8 rounded-lg hover:bg-gray-300">Voltar</button>
               <button onClick={handleNext} disabled={!preferences.propertyType} className="w-1/2 bg-gray-800 text-white font-bold py-4 px-8 rounded-lg hover:bg-gray-900 disabled:bg-gray-400">Avançar</button>
             </div>
           </div>
         );
-      case 3: // Budget
+      case 3:
         return (
           <div>
             <h2 className="text-4xl font-display mb-8">Qual é a sua faixa de orçamento?</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Mínimo</label>
-                <input 
-                    type="text" 
-                    name="min" 
-                    value={`R$ ${preferences.budget.min.toLocaleString('pt-BR')}`} 
-                    onChange={handleBudgetChange} 
-                    className="w-full p-4 border border-gray-300 rounded-lg" 
-                />
+                <input type="text" name="min" value={`R$ ${preferences.budget.min.toLocaleString('pt-BR')}`} onChange={handleBudgetChange} className="w-full p-4 border border-gray-300 rounded-lg" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Máximo</label>
-                <input 
-                    type="text" 
-                    name="max" 
-                    value={`R$ ${preferences.budget.max.toLocaleString('pt-BR')}`} 
-                    onChange={handleBudgetChange} 
-                    className="w-full p-4 border border-gray-300 rounded-lg" 
-                />
+                <input type="text" name="max" value={`R$ ${preferences.budget.max.toLocaleString('pt-BR')}`} onChange={handleBudgetChange} className="w-full p-4 border border-gray-300 rounded-lg" />
               </div>
             </div>
             <div className="fixed bottom-0 left-0 right-0 z-10 bg-white p-4 border-t border-gray-200 md:relative md:bg-transparent md:p-0 md:border-none md:mt-8 flex justify-between space-x-4">
@@ -284,7 +219,7 @@ const App: React.FC = () => {
             </div>
           </div>
         );
-      case 4: // Location & Priorities
+      case 4:
         return (
           <div>
             <h2 className="text-4xl font-display mb-8">Onde você se imagina morando?</h2>
@@ -301,14 +236,7 @@ const App: React.FC = () => {
                     ))}
                 </div>
                 <div className="mt-4">
-                  <input 
-                    type="text" 
-                    name="otherPriorities" 
-                    value={preferences.otherPriorities} 
-                    onChange={handleChange} 
-                    placeholder="Outra prioridade? Descreva aqui." 
-                    className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-amber-400 focus:border-amber-400" 
-                  />
+                  <input type="text" name="otherPriorities" value={preferences.otherPriorities} onChange={handleChange} placeholder="Outra prioridade? Descreva aqui." className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-amber-400 focus:border-amber-400" />
                 </div>
               </div>
             </div>
@@ -318,7 +246,7 @@ const App: React.FC = () => {
             </div>
           </div>
         );
-      case 5: // Home Essentials
+      case 5:
         return (
           <div>
             <h2 className="text-4xl font-display mb-8">Os detalhes essenciais.</h2>
@@ -344,14 +272,7 @@ const App: React.FC = () => {
                         ))}
                     </div>
                     <div className="mt-4">
-                      <input 
-                        type="text" 
-                        name="otherExtras" 
-                        value={preferences.otherExtras} 
-                        onChange={handleChange} 
-                        placeholder="Outro item? Descreva aqui." 
-                        className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-amber-400 focus:border-amber-400" 
-                      />
+                      <input type="text" name="otherExtras" value={preferences.otherExtras} onChange={handleChange} placeholder="Outro item? Descreva aqui." className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-amber-400 focus:border-amber-400" />
                     </div>
                 </div>
             </div>
@@ -370,10 +291,7 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="max-w-4xl mx-auto bg-white p-6 rounded-xl shadow-md mb-10">
-                    <div 
-                        className="flex justify-between items-center cursor-pointer"
-                        onClick={() => setIsRefineSearchOpen(prev => !prev)}
-                    >
+                    <div className="flex justify-between items-center cursor-pointer" onClick={() => setIsRefineSearchOpen(prev => !prev)}>
                         <h3 className="text-2xl font-display text-gray-800">Refinar Busca</h3>
                         <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 text-gray-600 transition-transform duration-300 ${isRefineSearchOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -386,23 +304,11 @@ const App: React.FC = () => {
                             <div className="flex flex-col md:flex-row items-center justify-center gap-4">
                                 <div className="w-full md:w-auto">
                                     <label className="block text-sm font-medium text-gray-700 text-center">Mínimo</label>
-                                    <input 
-                                        type="text" 
-                                        name="min"
-                                        value={`R$ ${preferences.budget.min.toLocaleString('pt-BR')}`}
-                                        onChange={handleBudgetChange} 
-                                        className="w-full p-3 border border-gray-300 rounded-lg text-center" 
-                                    />
+                                    <input type="text" name="min" value={`R$ ${preferences.budget.min.toLocaleString('pt-BR')}`} onChange={handleBudgetChange} className="w-full p-3 border border-gray-300 rounded-lg text-center" />
                                 </div>
                                 <div className="w-full md:w-auto">
                                     <label className="block text-sm font-medium text-gray-700 text-center">Máximo</label>
-                                    <input 
-                                        type="text"
-                                        name="max" 
-                                        value={`R$ ${preferences.budget.max.toLocaleString('pt-BR')}`}
-                                        onChange={handleBudgetChange}
-                                        className="w-full p-3 border border-gray-300 rounded-lg text-center" 
-                                    />
+                                    <input type="text" name="max" value={`R$ ${preferences.budget.max.toLocaleString('pt-BR')}`} onChange={handleBudgetChange} className="w-full p-3 border border-gray-300 rounded-lg text-center" />
                                 </div>
                                 <button onClick={handleRefineSearch} className="w-full md:w-auto mt-4 md:mt-0 self-center md:self-end bg-amber-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-amber-600 transition-colors">
                                     Buscar Novamente
@@ -419,8 +325,6 @@ const App: React.FC = () => {
                           property={prop} 
                           onSchedule={handleSchedule}
                           onInfoRequest={handleInfoRequest}
-                          onCompareToggle={handleToggleCompare}
-                          isInCompareList={comparisonList.some(p => p.id === prop.id)}
                         />
                     ))}
                 </div>
@@ -438,8 +342,6 @@ const App: React.FC = () => {
                                 property={prop} 
                                 onSchedule={handleSchedule}
                                 onInfoRequest={handleInfoRequest}
-                                onCompareToggle={handleToggleCompare}
-                                isInCompareList={comparisonList.some(p => p.id === prop.id)}
                                 />
                             ))}
                         </div>
@@ -476,13 +378,6 @@ const App: React.FC = () => {
         property={propertyForInfoRequest}
         userName={preferences.name}
       />
-
-      <ComparisonModal
-        isOpen={isComparisonModalOpen}
-        onClose={() => setIsComparisonModalOpen(false)}
-        properties={comparisonList}
-        onRemove={handleRemoveFromComparison}
-      />
       
       <header className="py-4 px-8 bg-white shadow-sm flex items-center space-x-3 sticky top-0 z-40">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-amber-500" viewBox="0 0 20 20" fill="currentColor">
@@ -509,32 +404,6 @@ const App: React.FC = () => {
         )}
         {error && <div className="max-w-3xl mx-auto mt-4 text-center text-red-600 bg-red-100 p-4 rounded-lg">{error}</div>}
       </main>
-      
-      {comparisonList.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-gray-800 text-white p-4 shadow-2xl z-40 transform transition-transform duration-300 translate-y-0">
-            <div className="container mx-auto flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                    <span className="font-bold text-lg hidden sm:block">Comparar Imóveis ({comparisonList.length}/3)</span>
-                    <div className="flex -space-x-2">
-                        {comparisonList.map(p => (
-                            <img key={p.id} src={p.imageUrl} alt={p.title} className="w-10 h-10 rounded-full border-2 border-white object-cover"/>
-                        ))}
-                    </div>
-                </div>
-                <div className="flex items-center space-x-4">
-                    <button onClick={() => setComparisonList([])} className="text-gray-300 hover:text-white transition-colors text-sm">Limpar</button>
-                    <button 
-                        onClick={() => setIsComparisonModalOpen(true)} 
-                        disabled={comparisonList.length < 2}
-                        className="bg-amber-500 font-bold py-2 px-6 rounded-lg hover:bg-amber-600 transition-colors disabled:bg-amber-800 disabled:cursor-not-allowed"
-                    >
-                        Comparar ({comparisonList.length})
-                    </button>
-                </div>
-            </div>
-        </div>
-      )}
-
     </div>
   );
 };
