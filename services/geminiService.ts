@@ -4,6 +4,7 @@ import { Preferences, Property } from '../types';
 const getAiClient = () => {
     const apiKey = import.meta.env.VITE_API_KEY;
     if (!apiKey) {
+        // This error is now more user-friendly and guides them for Vercel deployment.
         throw new Error("A chave de API do Gemini não está configurada. Adicione VITE_API_KEY às suas variáveis de ambiente no Vercel e faça o redeploy.");
     }
     return new GoogleGenAI({ apiKey });
