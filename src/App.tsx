@@ -1,4 +1,4 @@
-import React, { useState, useCallback, ChangeEvent } from 'react';
+import React, { useState, ChangeEvent } from 'react';
 import { Preferences, Property } from './types';
 import { generatePropertyListings, generateSimilarListings } from './services/geminiService';
 import Spinner from './components/Spinner';
@@ -40,7 +40,7 @@ const App: React.FC = () => {
   
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
   const [propertyForInfoRequest, setPropertyForInfoRequest] = useState<Property | null>(null);
-  
+
   const [comparisonList, setComparisonList] = useState<Property[]>([]);
   const [isComparisonModalOpen, setIsComparisonModalOpen] = useState(false);
 
@@ -52,6 +52,21 @@ const App: React.FC = () => {
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setPreferences(prev => ({ ...prev, [name]: value }));
+  };
+  
+  const handleBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    // Remove all non-digit characters
+    const digits = value.replace(/\D/g, '');
+    const numberValue = digits ? parseInt(digits, 10) : 0;
+    
+    setPreferences(prev => ({
+        ...prev,
+        budget: {
+            ...prev.budget,
+            [name]: numberValue
+        }
+    }));
   };
 
   const handleCheckboxChange = (e: ChangeEvent<HTMLInputElement>, field: 'priorities' | 'extras') => {
@@ -143,7 +158,6 @@ const App: React.FC = () => {
       if (prev.length < 3) {
         return [...prev, property];
       }
-      // Optional: Add feedback that limit is reached
       alert("Você pode comparar no máximo 3 imóveis por vez.");
       return prev;
     });
@@ -152,7 +166,6 @@ const App: React.FC = () => {
   const handleRemoveFromComparison = (propertyId: string) => {
     setComparisonList(prev => prev.filter(p => p.id !== propertyId));
   };
-
 
   const resetSearch = () => {
     setStep(1);
@@ -245,12 +258,24 @@ const App: React.FC = () => {
             <h2 className="text-4xl font-display mb-8">Qual é a sua faixa de orçamento?</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Mínimo (R$)</label>
-                <input type="number" step="50000" name="min" value={preferences.budget.min} onChange={(e) => setPreferences(p => ({...p, budget: {...p.budget, min: +e.target.value}}))} className="w-full p-4 border border-gray-300 rounded-lg" />
+                <label className="block text-sm font-medium text-gray-700">Mínimo</label>
+                <input 
+                    type="text" 
+                    name="min" 
+                    value={`R$ ${preferences.budget.min.toLocaleString('pt-BR')}`} 
+                    onChange={handleBudgetChange} 
+                    className="w-full p-4 border border-gray-300 rounded-lg" 
+                />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Máximo (R$)</label>
-                <input type="number" step="50000" name="max" value={preferences.budget.max} onChange={(e) => setPreferences(p => ({...p, budget: {...p.budget, max: +e.target.value}}))} className="w-full p-4 border border-gray-300 rounded-lg" />
+                <label className="block text-sm font-medium text-gray-700">Máximo</label>
+                <input 
+                    type="text" 
+                    name="max" 
+                    value={`R$ ${preferences.budget.max.toLocaleString('pt-BR')}`} 
+                    onChange={handleBudgetChange} 
+                    className="w-full p-4 border border-gray-300 rounded-lg" 
+                />
               </div>
             </div>
             <div className="fixed bottom-0 left-0 right-0 z-10 bg-white p-4 border-t border-gray-200 md:relative md:bg-transparent md:p-0 md:border-none md:mt-8 flex justify-between space-x-4">
@@ -301,11 +326,11 @@ const App: React.FC = () => {
                 <div className="flex space-x-4">
                     <div className="flex-1">
                         <label className="block text-sm font-medium text-gray-700">Quartos</label>
-                        <input type="number" name="bedrooms" value={preferences.bedrooms} onChange={handleChange} className="w-full p-4 border border-gray-300 rounded-lg"/>
+                        <input type="number" name="bedrooms" min="0" value={preferences.bedrooms} onChange={handleChange} className="w-full p-4 border border-gray-300 rounded-lg"/>
                     </div>
                     <div className="flex-1">
                         <label className="block text-sm font-medium text-gray-700">Banheiros</label>
-                        <input type="number" name="bathrooms" value={preferences.bathrooms} onChange={handleChange} className="w-full p-4 border border-gray-300 rounded-lg"/>
+                        <input type="number" name="bathrooms" min="0" value={preferences.bathrooms} onChange={handleChange} className="w-full p-4 border border-gray-300 rounded-lg"/>
                     </div>
                 </div>
                 <div>
@@ -324,7 +349,7 @@ const App: React.FC = () => {
                         name="otherExtras" 
                         value={preferences.otherExtras} 
                         onChange={handleChange} 
-                        placeholder="Outro item essencial? Descreva aqui." 
+                        placeholder="Outro item? Descreva aqui." 
                         className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-amber-400 focus:border-amber-400" 
                       />
                     </div>
@@ -338,7 +363,7 @@ const App: React.FC = () => {
         );
       case 6: // Results
         return (
-            <div className="pb-24">
+            <div className="pb-40">
                 <div className="text-center mb-10">
                     <h1 className="text-4xl md:text-5xl font-display text-gray-800">Aqui estão suas recomendações, {preferences.name}.</h1>
                     <p className="text-lg md:text-xl text-gray-600 mt-4 max-w-3xl mx-auto">A Vibbi analisou seus desejos para encontrar estes lares especiais para você.</p>
@@ -360,12 +385,24 @@ const App: React.FC = () => {
                             <h4 className="text-lg font-bold text-gray-800 mb-4 text-center">Alterar orçamento</h4>
                             <div className="flex flex-col md:flex-row items-center justify-center gap-4">
                                 <div className="w-full md:w-auto">
-                                    <label className="block text-sm font-medium text-gray-700 text-center">Mínimo (R$)</label>
-                                    <input type="number" step="50000" value={preferences.budget.min} onChange={(e) => setPreferences(p => ({...p, budget: {...p.budget, min: +e.target.value}}))} className="w-full p-3 border border-gray-300 rounded-lg text-center" />
+                                    <label className="block text-sm font-medium text-gray-700 text-center">Mínimo</label>
+                                    <input 
+                                        type="text" 
+                                        name="min"
+                                        value={`R$ ${preferences.budget.min.toLocaleString('pt-BR')}`}
+                                        onChange={handleBudgetChange} 
+                                        className="w-full p-3 border border-gray-300 rounded-lg text-center" 
+                                    />
                                 </div>
                                 <div className="w-full md:w-auto">
-                                    <label className="block text-sm font-medium text-gray-700 text-center">Máximo (R$)</label>
-                                    <input type="number" step="50000" value={preferences.budget.max} onChange={(e) => setPreferences(p => ({...p, budget: {...p.budget, max: +e.target.value}}))} className="w-full p-3 border border-gray-300 rounded-lg text-center" />
+                                    <label className="block text-sm font-medium text-gray-700 text-center">Máximo</label>
+                                    <input 
+                                        type="text"
+                                        name="max" 
+                                        value={`R$ ${preferences.budget.max.toLocaleString('pt-BR')}`}
+                                        onChange={handleBudgetChange}
+                                        className="w-full p-3 border border-gray-300 rounded-lg text-center" 
+                                    />
                                 </div>
                                 <button onClick={handleRefineSearch} className="w-full md:w-auto mt-4 md:mt-0 self-center md:self-end bg-amber-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-amber-600 transition-colors">
                                     Buscar Novamente
@@ -472,26 +509,26 @@ const App: React.FC = () => {
         )}
         {error && <div className="max-w-3xl mx-auto mt-4 text-center text-red-600 bg-red-100 p-4 rounded-lg">{error}</div>}
       </main>
-
+      
       {comparisonList.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 bg-gray-800 text-white p-4 shadow-2xl z-40 transform transition-transform duration-300 translate-y-0">
             <div className="container mx-auto flex items-center justify-between">
-                <div className="flex items-center space-x-4 overflow-hidden">
-                    <span className="font-bold text-lg hidden sm:block">Comparar ({comparisonList.length}/3)</span>
+                <div className="flex items-center space-x-4">
+                    <span className="font-bold text-lg hidden sm:block">Comparar Imóveis ({comparisonList.length}/3)</span>
                     <div className="flex -space-x-2">
                         {comparisonList.map(p => (
                             <img key={p.id} src={p.imageUrl} alt={p.title} className="w-10 h-10 rounded-full border-2 border-white object-cover"/>
                         ))}
                     </div>
                 </div>
-                <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
-                    <button onClick={() => setComparisonList([])} className="text-gray-300 hover:text-white transition-colors text-sm px-2">Limpar</button>
+                <div className="flex items-center space-x-4">
+                    <button onClick={() => setComparisonList([])} className="text-gray-300 hover:text-white transition-colors text-sm">Limpar</button>
                     <button 
                         onClick={() => setIsComparisonModalOpen(true)} 
                         disabled={comparisonList.length < 2}
-                        className="bg-amber-500 font-bold py-2 px-3 sm:px-6 rounded-lg hover:bg-amber-600 transition-colors disabled:bg-amber-800 disabled:cursor-not-allowed"
+                        className="bg-amber-500 font-bold py-2 px-6 rounded-lg hover:bg-amber-600 transition-colors disabled:bg-amber-800 disabled:cursor-not-allowed"
                     >
-                        <span className="hidden sm:inline">Comparar</span> ({comparisonList.length})
+                        Comparar ({comparisonList.length})
                     </button>
                 </div>
             </div>
