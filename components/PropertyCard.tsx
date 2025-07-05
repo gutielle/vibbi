@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Property } from '../types';
+import React from 'react';
+import { Property, Preferences } from '../types';
 
 interface PropertyCardProps {
   property: Property;
+  preferences: Preferences;
   onSchedule: (property: Property) => void;
   onInfoRequest: (property: Property) => void;
 }
@@ -46,69 +47,28 @@ const InfoIcon = ({ className = 'w-5 h-5' }) => (
     </svg>
 );
 
-const LightbulbIcon = ({ className = 'w-5 h-5' }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+const AiAnalysisIcon = ({ className = 'w-5 h-5' }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
       <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
     </svg>
 );
 
+const CheckIcon = ({ className = 'w-5 h-5' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+  </svg>
+);
 
-const PropertyCard: React.FC<PropertyCardProps> = ({ property, onSchedule, onInfoRequest }) => {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-
-  // CRASH FIX: Ensure imageUrls is a valid array, otherwise use a placeholder.
-  const safeImageUrls = Array.isArray(property.imageUrls) && property.imageUrls.length > 0
-    ? property.imageUrls
-    : [`https://picsum.photos/800/600?random=${property.id}`];
-
-  const nextImage = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    setCurrentImageIndex(prevIndex => (prevIndex + 1) % safeImageUrls.length);
-  };
-
-  const prevImage = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    setCurrentImageIndex(prevIndex => (prevIndex - 1 + safeImageUrls.length) % safeImageUrls.length);
-  };
+const PropertyCard: React.FC<PropertyCardProps> = ({ property, preferences, onSchedule, onInfoRequest }) => {
+  const userPriorities = [...preferences.priorities, preferences.otherPriorities].filter(Boolean);
 
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden transform hover:-translate-y-2 transition-transform duration-300 ease-in-out flex flex-col">
-      <div className="relative w-full h-56 group">
-        <img 
-          className="w-full h-full object-cover transition-transform duration-300" 
-          src={safeImageUrls[currentImageIndex]} 
-          alt={`${property.title} - Imagem ${currentImageIndex + 1}`} 
-        />
-        {safeImageUrls.length > 1 && (
-          <>
-            <button 
-              onClick={prevImage} 
-              aria-label="Imagem anterior"
-              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-40 text-white p-1 rounded-full hover:bg-opacity-60 transition-opacity opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-            </button>
-            <button 
-              onClick={nextImage} 
-              aria-label="Próxima imagem"
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-40 text-white p-1 rounded-full hover:bg-opacity-60 transition-opacity opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-            </button>
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex space-x-1.5">
-              {safeImageUrls.map((_, index) => (
-                <div 
-                  key={index} 
-                  className={`w-2 h-2 rounded-full transition-colors ${index === currentImageIndex ? 'bg-white' : 'bg-white bg-opacity-50'}`}
-                ></div>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-
+      <img 
+        className="w-full h-56 object-cover" 
+        src={property.imageUrl || `https://picsum.photos/800/600?random=${property.id}`} 
+        alt={property.title} 
+      />
       <div className="p-6 flex flex-col flex-grow">
         <h3 className="text-2xl font-display text-gray-800">{property.title}</h3>
         <p className="text-sm text-gray-500 mt-1">{property.address}</p>
@@ -131,25 +91,42 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property, onSchedule, onInf
         </div>
         <p className="text-gray-600 flex-grow">{property.description}</p>
         
-        <div className="mt-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <h4 className="font-bold text-amber-800">Um recado para você:</h4>
+        {userPriorities.length > 0 && (
+          <div className="mt-6 bg-teal-50 border border-teal-200 rounded-lg p-4">
+              <h4 className="font-bold text-teal-800">Combina com seus desejos:</h4>
+              <ul className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
+                {userPriorities.map(priority => (
+                  <li key={priority} className="flex items-center space-x-2 text-teal-700">
+                    <CheckIcon className="w-4 h-4 text-teal-600" />
+                    <span className="text-sm">{priority}</span>
+                  </li>
+                ))}
+              </ul>
+          </div>
+        )}
+        
+        <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <h4 className="font-bold text-amber-800 flex items-center">
+                <AiAnalysisIcon className="w-5 h-5 mr-2" />
+                Análise da Vibbi para Você
+            </h4>
             <p className="text-amber-700 italic mt-2">"{property.personalizedPitch}"</p>
         </div>
         
         {property.neighborhoodVibe && (
-            <div className="mt-4 bg-teal-50 border border-teal-200 rounded-lg p-4">
-                <h4 className="font-bold text-teal-800 flex items-center">
+            <div className="mt-4 bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                <h4 className="font-bold text-indigo-800 flex items-center">
                     <MapPinIcon className="w-5 h-5 mr-2" />
                     Vibrações do Bairro
                 </h4>
-                <p className="text-teal-700 mt-2">{property.neighborhoodVibe}</p>
+                <p className="text-indigo-700 mt-2">{property.neighborhoodVibe}</p>
             </div>
         )}
 
         {property.suggestionReason && (
             <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <h4 className="font-bold text-blue-800 flex items-center">
-                    <LightbulbIcon className="w-5 h-5 mr-2" />
+                    <AiAnalysisIcon className="w-5 h-5 mr-2" />
                     Por que sugerimos?
                 </h4>
                 <p className="text-blue-700 mt-2 italic">"{property.suggestionReason}"</p>
