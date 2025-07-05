@@ -325,7 +325,8 @@ const App: React.FC = () => {
                     {listings.map(prop => (
                         <PropertyCard 
                           key={prop.id} 
-                          property={prop} 
+                          property={prop}
+                          preferences={preferences}
                           onSchedule={handleSchedule}
                           onInfoRequest={handleInfoRequest}
                         />
@@ -343,6 +344,7 @@ const App: React.FC = () => {
                                 <PropertyCard 
                                 key={prop.id} 
                                 property={prop} 
+                                preferences={preferences}
                                 onSchedule={handleSchedule}
                                 onInfoRequest={handleInfoRequest}
                                 />
