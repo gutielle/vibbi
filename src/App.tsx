@@ -92,7 +92,8 @@ const App: React.FC = () => {
       setSimilarListings(similarProps);
 
     } catch (err: any) {
-      setError(err.message || 'Ocorreu um erro desconhecido.');
+      const errorMessage = err instanceof Error ? err.message : 'Ocorreu um erro desconhecido.';
+      setError(errorMessage);
       setListings([]);
     } finally {
       setIsLoading(false);
@@ -115,7 +116,8 @@ const App: React.FC = () => {
       setSimilarListings(similarProps);
       
     } catch (err: any) {
-       setError(err.message || 'Ocorreu um erro desconhecido.');
+       const errorMessage = err instanceof Error ? err.message : 'Ocorreu um erro desconhecido.';
+       setError(errorMessage);
        setListings([]);
     } finally {
         setIsLoading(false);
