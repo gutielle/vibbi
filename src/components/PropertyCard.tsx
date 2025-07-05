@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Property } from '../types';
 
 interface PropertyCardProps {
@@ -54,56 +54,13 @@ const LightbulbIcon = ({ className = 'w-5 h-5' }) => (
 
 
 const PropertyCard: React.FC<PropertyCardProps> = ({ property, onSchedule, onInfoRequest }) => {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-
-  const nextImage = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    setCurrentImageIndex(prevIndex => (prevIndex + 1) % property.imageUrls.length);
-  };
-
-  const prevImage = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    setCurrentImageIndex(prevIndex => (prevIndex - 1 + property.imageUrls.length) % property.imageUrls.length);
-  };
-
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden transform hover:-translate-y-2 transition-transform duration-300 ease-in-out flex flex-col">
-      <div className="relative w-full h-56 group">
-        <img 
-          className="w-full h-full object-cover transition-transform duration-300" 
-          src={property.imageUrls[currentImageIndex]} 
-          alt={`${property.title} - Imagem ${currentImageIndex + 1}`} 
-        />
-        {property.imageUrls && property.imageUrls.length > 1 && (
-          <>
-            <button 
-              onClick={prevImage} 
-              aria-label="Imagem anterior"
-              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-40 text-white p-1 rounded-full hover:bg-opacity-60 transition-opacity opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-            </button>
-            <button 
-              onClick={nextImage} 
-              aria-label="Próxima imagem"
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-40 text-white p-1 rounded-full hover:bg-opacity-60 transition-opacity opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-            </button>
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex space-x-1.5">
-              {property.imageUrls.map((_, index) => (
-                <div 
-                  key={index} 
-                  className={`w-2 h-2 rounded-full transition-colors ${index === currentImageIndex ? 'bg-white' : 'bg-white bg-opacity-50'}`}
-                ></div>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-
+      <img 
+        className="w-full h-56 object-cover" 
+        src={property.imageUrl || `https://picsum.photos/800/600?random=${property.id}`} 
+        alt={property.title} 
+      />
       <div className="p-6 flex flex-col flex-grow">
         <h3 className="text-2xl font-display text-gray-800">{property.title}</h3>
         <p className="text-sm text-gray-500 mt-1">{property.address}</p>
