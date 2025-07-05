@@ -24,7 +24,7 @@ export interface Property {
   bedrooms: number;
   bathrooms: number;
   sqft: number;
-  imageUrl: string;
+  imageUrls: string[];
   description: string;
   personalizedPitch: string;
   imagePrompt: string;
