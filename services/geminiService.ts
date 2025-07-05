@@ -1,11 +1,13 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { Preferences, Property } from '../types';
 
-if (!process.env.API_KEY) {
-    throw new Error("API_KEY environment variable not set");
-}
-
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const getAiClient = () => {
+    const apiKey = import.meta.env.VITE_API_KEY;
+    if (!apiKey) {
+        throw new Error("A chave de API do Gemini não está configurada. Adicione VITE_API_KEY às suas variáveis de ambiente no Vercel e faça o redeploy.");
+    }
+    return new GoogleGenAI({ apiKey });
+};
 
 const generatePropertyListingsPrompt = (preferences: Preferences): string => {
   const allPriorities = [...preferences.priorities, preferences.otherPriorities].filter(Boolean).join(', ');
@@ -54,6 +56,7 @@ const generateNeighborhoodVibePrompt = (property: Omit<Property, 'imageUrl' | 'n
 
 export const generatePropertyImage = async (imagePrompt: string): Promise<string> => {
     try {
+        const ai = getAiClient();
         const response = await ai.models.generateImages({
             model: 'imagen-3.0-generate-002',
             prompt: `Professional, photorealistic real estate photography of: ${imagePrompt}`,
@@ -64,6 +67,7 @@ export const generatePropertyImage = async (imagePrompt: string): Promise<string
         return `data:image/jpeg;base64,${base64ImageBytes}`;
     } catch (error) {
         console.error("Error generating property image, using placeholder", error);
+        if (error instanceof Error && error.message.includes("API")) throw error;
         const randomSeed = Math.floor(Math.random() * 1000);
         return `https://picsum.photos/800/600?random=${randomSeed}`;
     }
@@ -72,6 +76,7 @@ export const generatePropertyImage = async (imagePrompt: string): Promise<string
 const generateNeighborhoodVibe = async (property: Omit<Property, 'imageUrl' | 'neighborhoodVibe'>, preferences: Preferences): Promise<string> => {
     const prompt = generateNeighborhoodVibePrompt(property, preferences);
     try {
+        const ai = getAiClient();
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash-preview-04-17',
             contents: prompt,
@@ -80,6 +85,7 @@ const generateNeighborhoodVibe = async (property: Omit<Property, 'imageUrl' | 'n
         return response.text;
     } catch (error) {
         console.error("Error generating neighborhood vibe:", error);
+         if (error instanceof Error && error.message.includes("API")) throw error;
         return "Não foi possível carregar a descrição do bairro, mas temos certeza que você vai adorar a área!";
     }
 };
@@ -88,6 +94,7 @@ export const generatePropertyListings = async (preferences: Preferences, setLoad
   const prompt = generatePropertyListingsPrompt(preferences);
   
   try {
+    const ai = getAiClient();
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-preview-04-17',
         contents: prompt,
@@ -126,7 +133,8 @@ export const generatePropertyListings = async (preferences: Preferences, setLoad
     return enrichedProperties;
   } catch (error) {
     console.error("Error generating property listings:", error);
-    throw new Error("Não foi possível gerar as recomendações. Por favor, tente novamente.");
+    const errorMessage = error instanceof Error ? error.message : "Não foi possível gerar as recomendações. Por favor, tente novamente.";
+    throw new Error(errorMessage);
   }
 };
 
@@ -172,6 +180,7 @@ export const generateSimilarListings = async (preferences: Preferences, existing
   const prompt = generateSimilarListingsPrompt(preferences, existingIds);
 
   try {
+    const ai = getAiClient();
     setLoadingMessage("Buscando algumas opções criativas...");
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-preview-04-17',
