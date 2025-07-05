@@ -8,3 +8,29 @@ body {
 .font-display {
     font-family: 'DM Serif Display', serif;
 }
+
+/* Custom styles for date input to ensure value is visible */
+
+/* This forces the text of a selected date to be dark. */
+input[type="date"]:in-range::-webkit-datetime-edit-year-field,
+input[type="date"]:in-range::-webkit-datetime-edit-month-field,
+input[type="date"]:in-range::-webkit-datetime-edit-day-field,
+input[type="date"]:in-range::-webkit-datetime-edit-text {
+    color: #111827; /* Tailwind's text-gray-900 */
+}
+
+/* This helps ensure consistent rendering in Firefox. */
+input[type="date"] {
+    color-scheme: light;
+}
+
+/* Optional: style the calendar icon for better UX */
+input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+}
