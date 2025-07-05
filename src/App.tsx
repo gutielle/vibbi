@@ -1,0 +1,486 @@
+import React, { useState, useCallback, ChangeEvent } from 'react';
+import { Preferences, Property } from './types';
+import { generatePropertyListings, generateSimilarListings } from './services/geminiService';
+import Spinner from './components/Spinner';
+import PropertyCard from './components/PropertyCard';
+import SchedulingModal from './components/SchedulingModal';
+import InfoRequestModal from './components/InfoRequestModal';
+import ComparisonModal from './components/ComparisonModal';
+
+const initialPreferences: Preferences = {
+  name: '',
+  intention: 'Comprar',
+  propertyType: '',
+  otherPropertyType: '',
+  budget: { min: 500000, max: 2000000 },
+  location: 'São Paulo',
+  priorities: [],
+  otherPriorities: '',
+  bedrooms: 3,
+  bathrooms: 2,
+  extras: [],
+  otherExtras: '',
+};
+
+const propertyTypeOptions = ['Casa', 'Apartamento', 'Cobertura', 'Terreno', 'Studio', 'Sítio/Chácara'];
+const prioritiesOptions = ['Perto de boas escolas', 'Perto do trabalho', 'Bairro tranquilo', 'Vida noturna agitada', 'Perto de parques'];
+const extrasOptions = ['Garagem', 'Quintal', 'Cozinha moderna', 'Home office', 'Piscina', 'Varanda gourmet'];
+
+const App: React.FC = () => {
+  const [step, setStep] = useState(1);
+  const [preferences, setPreferences] = useState<Preferences>(initialPreferences);
+  const [listings, setListings] = useState<Property[]>([]);
+  const [similarListings, setSimilarListings] = useState<Property[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  
+  const [isSchedulingModalOpen, setIsSchedulingModalOpen] = useState(false);
+  const [propertyToSchedule, setPropertyToSchedule] = useState<Property | null>(null);
+  
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+  const [propertyForInfoRequest, setPropertyForInfoRequest] = useState<Property | null>(null);
+  
+  const [comparisonList, setComparisonList] = useState<Property[]>([]);
+  const [isComparisonModalOpen, setIsComparisonModalOpen] = useState(false);
+
+  const handleNext = () => setStep(prev => prev + 1);
+  const handleBack = () => setStep(prev => prev - 1);
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setPreferences(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleCheckboxChange = (e: ChangeEvent<HTMLInputElement>, field: 'priorities' | 'extras') => {
+    const { value, checked } = e.target;
+    setPreferences(prev => {
+      const currentValues = prev[field];
+      if (checked) {
+        return { ...prev, [field]: [...currentValues, value] };
+      } else {
+        return { ...prev, [field]: currentValues.filter(item => item !== value) };
+      }
+    });
+  };
+
+  const handleFindProperties = async () => {
+    setIsLoading(true);
+    setError(null);
+    setComparisonList([]);
+    setListings([]);
+    setSimilarListings([]);
+    try {
+      setLoadingMessage("Criando recomendações sob medida...");
+      const properties = await generatePropertyListings(preferences, setLoadingMessage);
+      setListings(properties);
+      setStep(6); 
+
+      const similarProps = await generateSimilarListings(preferences, properties, setLoadingMessage);
+      setSimilarListings(similarProps);
+
+    } catch (err: any) {
+      setError(err.message || 'Ocorreu um erro desconhecido.');
+      setListings([]);
+    } finally {
+      setIsLoading(false);
+      setLoadingMessage('');
+    }
+  };
+
+  const handleRefineSearch = async () => {
+    setIsLoading(true);
+    setError(null);
+    setComparisonList([]);
+    setListings([]);
+    setSimilarListings([]);
+    try {
+      setLoadingMessage("Refinando sua busca...");
+      const properties = await generatePropertyListings(preferences, setLoadingMessage);
+      setListings(properties);
+
+      const similarProps = await generateSimilarListings(preferences, properties, setLoadingMessage);
+      setSimilarListings(similarProps);
+      
+    } catch (err: any) {
+       setError(err.message || 'Ocorreu um erro desconhecido.');
+       setListings([]);
+    } finally {
+        setIsLoading(false);
+        setLoadingMessage('');
+    }
+  };
+  
+  const handleSchedule = (property: Property) => {
+    setPropertyToSchedule(property);
+    setIsSchedulingModalOpen(true);
+  };
+
+  const handleCloseScheduling = () => {
+    setIsSchedulingModalOpen(false);
+    setTimeout(() => setPropertyToSchedule(null), 300);
+  };
+
+  const handleInfoRequest = (property: Property) => {
+    setPropertyForInfoRequest(property);
+    setIsInfoModalOpen(true);
+  };
+
+  const handleCloseInfoModal = () => {
+    setIsInfoModalOpen(false);
+    setTimeout(() => setPropertyForInfoRequest(null), 300);
+  };
+
+  const handleToggleCompare = (property: Property) => {
+    setComparisonList(prev => {
+      const isInList = prev.some(p => p.id === property.id);
+      if (isInList) {
+        return prev.filter(p => p.id !== property.id);
+      }
+      if (prev.length < 3) {
+        return [...prev, property];
+      }
+      // Optional: Add feedback that limit is reached
+      alert("Você pode comparar no máximo 3 imóveis por vez.");
+      return prev;
+    });
+  };
+  
+  const handleRemoveFromComparison = (propertyId: string) => {
+    setComparisonList(prev => prev.filter(p => p.id !== propertyId));
+  };
+
+
+  const resetSearch = () => {
+    setStep(1);
+    setListings([]);
+    setSimilarListings([]);
+    setPreferences(initialPreferences);
+    setComparisonList([]);
+    setError(null);
+  };
+
+  const renderStep = () => {
+    switch (step) {
+      case 1: // Welcome & Name
+        return (
+          <div>
+            <h2 className="text-4xl font-display mb-4">Bem-vindo(a) ao Vibbi</h2>
+            <p className="text-lg text-gray-600 mb-8">Vamos encontrar a casa dos seus sonhos, com a sua vibe. Para começar, como podemos te chamar?</p>
+            <input type="text" name="name" value={preferences.name} onChange={handleChange} placeholder="Digite seu nome" className="w-full p-4 border border-gray-300 rounded-lg text-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400" />
+            <button onClick={handleNext} disabled={!preferences.name} className="mt-6 w-full bg-gray-800 text-white font-bold py-4 rounded-lg hover:bg-gray-900 transition-colors disabled:bg-gray-400">Avançar</button>
+          </div>
+        );
+      case 2: // Intention & Property Type
+        return (
+          <div>
+            <h2 className="text-4xl font-display mb-2">Prazer, {preferences.name}!</h2>
+            <p className="text-lg text-gray-600 mb-8">Nos conte, qual o seu objetivo e que tipo de imóvel você busca?</p>
+
+            <div className="space-y-6">
+                <div>
+                    <h3 className="text-xl font-bold mb-3">Sua pretensão é...</h3>
+                    <div className="flex space-x-4">
+                      {(['Comprar', 'Alugar'] as const).map(intention => (
+                        <button
+                          key={intention}
+                          onClick={() => setPreferences(p => ({ ...p, intention }))}
+                          className={`w-full p-4 rounded-lg border-2 text-lg font-bold transition-colors ${
+                            preferences.intention === intention
+                              ? 'bg-amber-500 text-white border-amber-500'
+                              : 'bg-white hover:bg-amber-50 border-gray-300'
+                          }`}
+                        >
+                          {intention}
+                        </button>
+                      ))}
+                    </div>
+                </div>
+
+                <div>
+                    <h3 className="text-xl font-bold mb-3">E o tipo de imóvel é...</h3>
+                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {propertyTypeOptions.map(opt => (
+                           <button
+                            key={opt}
+                            onClick={() => setPreferences(p => ({ ...p, propertyType: opt, otherPropertyType: '' }))}
+                            className={`flex items-center justify-center text-center space-x-3 p-3 border-2 rounded-lg cursor-pointer transition-colors ${
+                              preferences.propertyType === opt
+                                ? 'bg-amber-500 text-white border-amber-500 font-semibold'
+                                : 'bg-white hover:bg-amber-50 border-gray-300'
+                            }`}
+                          >
+                            <span>{opt}</span>
+                          </button>
+                        ))}
+                    </div>
+                    <div className="mt-4">
+                      <input 
+                        type="text" 
+                        name="otherPropertyType" 
+                        value={preferences.otherPropertyType} 
+                        onChange={handleChange}
+                        onFocus={() => setPreferences(p => ({...p, propertyType: 'Outro'}))}
+                        placeholder="Outro tipo? Descreva aqui." 
+                        className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-amber-400 focus:border-amber-400" 
+                      />
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex justify-between mt-8">
+              <button onClick={handleBack} className="bg-gray-200 text-gray-800 font-bold py-4 px-8 rounded-lg hover:bg-gray-300">Voltar</button>
+              <button onClick={handleNext} disabled={!preferences.propertyType} className="bg-gray-800 text-white font-bold py-4 px-8 rounded-lg hover:bg-gray-900 disabled:bg-gray-400">Avançar</button>
+            </div>
+          </div>
+        );
+      case 3: // Budget
+        return (
+          <div>
+            <h2 className="text-4xl font-display mb-8">Qual é a sua faixa de orçamento?</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Mínimo (R$)</label>
+                <input type="number" step="50000" name="min" value={preferences.budget.min} onChange={(e) => setPreferences(p => ({...p, budget: {...p.budget, min: +e.target.value}}))} className="w-full p-4 border border-gray-300 rounded-lg" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Máximo (R$)</label>
+                <input type="number" step="50000" name="max" value={preferences.budget.max} onChange={(e) => setPreferences(p => ({...p, budget: {...p.budget, max: +e.target.value}}))} className="w-full p-4 border border-gray-300 rounded-lg" />
+              </div>
+            </div>
+            <div className="flex justify-between mt-6">
+              <button onClick={handleBack} className="bg-gray-200 text-gray-800 font-bold py-4 px-8 rounded-lg hover:bg-gray-300">Voltar</button>
+              <button onClick={handleNext} className="bg-gray-800 text-white font-bold py-4 px-8 rounded-lg hover:bg-gray-900">Avançar</button>
+            </div>
+          </div>
+        );
+      case 4: // Location & Priorities
+        return (
+          <div>
+            <h2 className="text-4xl font-display mb-8">Onde você se imagina morando?</h2>
+            <div className="space-y-6">
+              <input type="text" name="location" value={preferences.location} onChange={handleChange} placeholder="Cidade ou bairro" className="w-full p-4 border border-gray-300 rounded-lg" />
+              <div>
+                <h3 className="text-xl font-bold mb-3">Quais são suas prioridades?</h3>
+                <div className="grid grid-cols-2 gap-4">
+                    {prioritiesOptions.map(opt => (
+                        <label key={opt} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-amber-50 cursor-pointer">
+                            <input type="checkbox" value={opt} checked={preferences.priorities.includes(opt)} onChange={(e) => handleCheckboxChange(e, 'priorities')} className="h-5 w-5 rounded text-amber-600 focus:ring-amber-500" />
+                            <span>{opt}</span>
+                        </label>
+                    ))}
+                </div>
+                <div className="mt-4">
+                  <input 
+                    type="text" 
+                    name="otherPriorities" 
+                    value={preferences.otherPriorities} 
+                    onChange={handleChange} 
+                    placeholder="Outra prioridade? Descreva aqui." 
+                    className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-amber-400 focus:border-amber-400" 
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-between mt-6">
+              <button onClick={handleBack} className="bg-gray-200 text-gray-800 font-bold py-4 px-8 rounded-lg hover:bg-gray-300">Voltar</button>
+              <button onClick={handleNext} className="bg-gray-800 text-white font-bold py-4 px-8 rounded-lg hover:bg-gray-900">Avançar</button>
+            </div>
+          </div>
+        );
+      case 5: // Home Essentials
+        return (
+          <div>
+            <h2 className="text-4xl font-display mb-8">Os detalhes essenciais.</h2>
+            <div className="space-y-6">
+                <div className="flex space-x-4">
+                    <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-700">Quartos</label>
+                        <input type="number" name="bedrooms" value={preferences.bedrooms} onChange={handleChange} className="w-full p-4 border border-gray-300 rounded-lg"/>
+                    </div>
+                    <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-700">Banheiros</label>
+                        <input type="number" name="bathrooms" value={preferences.bathrooms} onChange={handleChange} className="w-full p-4 border border-gray-300 rounded-lg"/>
+                    </div>
+                </div>
+                <div>
+                    <h3 className="text-xl font-bold mb-3">O que não pode faltar?</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                        {extrasOptions.map(opt => (
+                            <label key={opt} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-amber-50 cursor-pointer">
+                                <input type="checkbox" value={opt} checked={preferences.extras.includes(opt)} onChange={(e) => handleCheckboxChange(e, 'extras')} className="h-5 w-5 rounded text-amber-600 focus:ring-amber-500"/>
+                                <span>{opt}</span>
+                            </label>
+                        ))}
+                    </div>
+                    <div className="mt-4">
+                      <input 
+                        type="text" 
+                        name="otherExtras" 
+                        value={preferences.otherExtras} 
+                        onChange={handleChange} 
+                        placeholder="Outro item essencial? Descreva aqui." 
+                        className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-amber-400 focus:border-amber-400" 
+                      />
+                    </div>
+                </div>
+            </div>
+            <div className="flex justify-between mt-6">
+              <button onClick={handleBack} className="bg-gray-200 text-gray-800 font-bold py-4 px-8 rounded-lg hover:bg-gray-300">Voltar</button>
+              <button onClick={handleFindProperties} className="bg-amber-500 text-white font-bold py-4 px-8 rounded-lg hover:bg-amber-600 transition-colors">Encontrar meu lar</button>
+            </div>
+          </div>
+        );
+      case 6: // Results
+        return (
+            <div className="pb-24">
+                <div className="text-center mb-10">
+                    <h1 className="text-5xl font-display text-gray-800">Aqui estão suas recomendações, {preferences.name}.</h1>
+                    <p className="text-xl text-gray-600 mt-4 max-w-3xl mx-auto">A Vibbi analisou seus desejos para encontrar estes lares especiais para você.</p>
+                </div>
+
+                <div className="max-w-4xl mx-auto bg-white p-6 rounded-xl shadow-md mb-10">
+                    <h3 className="text-2xl font-display text-gray-800 mb-4 text-center">Alterar orçamento</h3>
+                    <div className="flex flex-col md:flex-row items-center justify-center gap-4">
+                        <div className="w-full md:w-auto">
+                            <label className="block text-sm font-medium text-gray-700 text-center">Orçamento Mínimo (R$)</label>
+                            <input type="number" step="50000" value={preferences.budget.min} onChange={(e) => setPreferences(p => ({...p, budget: {...p.budget, min: +e.target.value}}))} className="w-full p-3 border border-gray-300 rounded-lg text-center" />
+                        </div>
+                        <div className="w-full md:w-auto">
+                            <label className="block text-sm font-medium text-gray-700 text-center">Orçamento Máximo (R$)</label>
+                            <input type="number" step="50000" value={preferences.budget.max} onChange={(e) => setPreferences(p => ({...p, budget: {...p.budget, max: +e.target.value}}))} className="w-full p-3 border border-gray-300 rounded-lg text-center" />
+                        </div>
+                        <button onClick={handleRefineSearch} className="w-full md:w-auto mt-4 md:mt-0 self-end bg-amber-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-amber-600 transition-colors">
+                            Buscar Novamente
+                        </button>
+                    </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {listings.map(prop => (
+                        <PropertyCard 
+                          key={prop.id} 
+                          property={prop} 
+                          onSchedule={handleSchedule}
+                          onInfoRequest={handleInfoRequest}
+                          onCompareToggle={handleToggleCompare}
+                          isInCompareList={comparisonList.some(p => p.id === prop.id)}
+                        />
+                    ))}
+                </div>
+
+                {similarListings.length > 0 && (
+                    <div className="mt-20">
+                        <div className="text-center mb-10">
+                            <h2 className="text-4xl font-display text-gray-800">Você também pode gostar</h2>
+                            <p className="text-xl text-gray-600 mt-2">Encontramos algumas alternativas que podem te surpreender.</p>
+                        </div>
+                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {similarListings.map(prop => (
+                                <PropertyCard 
+                                key={prop.id} 
+                                property={prop} 
+                                onSchedule={handleSchedule}
+                                onInfoRequest={handleInfoRequest}
+                                onCompareToggle={handleToggleCompare}
+                                isInCompareList={comparisonList.some(p => p.id === prop.id)}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                <div className="text-center mt-12">
+                    <button onClick={resetSearch} className="bg-gray-800 text-white font-bold py-4 px-10 rounded-lg hover:bg-gray-900 transition-colors">
+                        Começar do Zero
+                    </button>
+                </div>
+            </div>
+        )
+      default:
+        return <div>Etapa desconhecida</div>;
+    }
+  };
+
+  const progress = step <= 5 ? (step - 1) / 5 * 100 : 100;
+
+  return (
+    <div className="bg-gray-50 min-h-screen text-gray-800">
+      {isLoading && <Spinner message={loadingMessage || "Buscando propriedades..."} />}
+
+      <SchedulingModal 
+        isOpen={isSchedulingModalOpen}
+        onClose={handleCloseScheduling}
+        property={propertyToSchedule}
+      />
+
+      <InfoRequestModal
+        isOpen={isInfoModalOpen}
+        onClose={handleCloseInfoModal}
+        property={propertyForInfoRequest}
+        userName={preferences.name}
+      />
+
+      <ComparisonModal
+        isOpen={isComparisonModalOpen}
+        onClose={() => setIsComparisonModalOpen(false)}
+        properties={comparisonList}
+        onRemove={handleRemoveFromComparison}
+      />
+      
+      <header className="py-4 px-8 bg-white shadow-sm flex items-center space-x-3 sticky top-0 z-40">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-amber-500" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+        </svg>
+        <h1 className="text-2xl font-bold font-display">Vibbi</h1>
+      </header>
+
+      <main className="container mx-auto p-8">
+        {step < 6 ? (
+          <div className="max-w-3xl mx-auto bg-white p-8 md:p-12 rounded-xl shadow-md">
+            <div className="mb-8">
+              <div className="flex justify-between mb-1">
+                <span className="text-base font-medium text-amber-700">Etapa {step} de 5</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div className="bg-amber-500 h-2.5 rounded-full" style={{ width: `${progress}%`, transition: 'width 0.5s ease-in-out' }}></div>
+              </div>
+            </div>
+            {renderStep()}
+          </div>
+        ) : (
+          renderStep()
+        )}
+        {error && <div className="max-w-3xl mx-auto mt-4 text-center text-red-600 bg-red-100 p-4 rounded-lg">{error}</div>}
+      </main>
+
+      {comparisonList.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-gray-800 text-white p-4 shadow-2xl z-40 transform transition-transform duration-300 translate-y-0">
+            <div className="container mx-auto flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                    <span className="font-bold text-lg hidden sm:block">Comparar Imóveis ({comparisonList.length}/3)</span>
+                    <div className="flex -space-x-2">
+                        {comparisonList.map(p => (
+                            <img key={p.id} src={p.imageUrl} alt={p.title} className="w-10 h-10 rounded-full border-2 border-white object-cover"/>
+                        ))}
+                    </div>
+                </div>
+                <div className="flex items-center space-x-4">
+                    <button onClick={() => setComparisonList([])} className="text-gray-300 hover:text-white transition-colors text-sm">Limpar</button>
+                    <button 
+                        onClick={() => setIsComparisonModalOpen(true)} 
+                        disabled={comparisonList.length < 2}
+                        className="bg-amber-500 font-bold py-2 px-6 rounded-lg hover:bg-amber-600 transition-colors disabled:bg-amber-800 disabled:cursor-not-allowed"
+                    >
+                        Comparar ({comparisonList.length})
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
+
+    </div>
+  );
+};
+
+export default App;
