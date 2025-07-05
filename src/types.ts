@@ -31,4 +31,3 @@ export interface Property {
   neighborhoodVibe: string;
   suggestionReason?: string;
 }
-  
