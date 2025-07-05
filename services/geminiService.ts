@@ -65,19 +65,17 @@ export const generatePropertyImages = async (imagePrompt: string): Promise<strin
 
         const imageUrls = response.generatedImages.map(img => `data:image/jpeg;base64,${img.image.imageBytes}`);
         
-        if (imageUrls.length < 3) {
-            const placeholders = Array(3 - imageUrls.length).fill(0).map(() => `https://picsum.photos/800/600?random=${Math.floor(Math.random() * 1000)}`);
-            return [...imageUrls, ...placeholders];
-        }
-        
+        if (imageUrls.length === 0) throw new Error("No images generated");
+
         return imageUrls;
     } catch (error) {
         console.error("Error generating property images, using placeholders", error);
         if (error instanceof Error && error.message.includes("API")) throw error;
+        // Return placeholders if generation fails for other reasons
         return [
             `https://picsum.photos/800/600?random=${Math.floor(Math.random() * 1000)}`,
-            `https://picsum.photos/800/600?random=${Math.floor(Math.random() * 1000)}`,
-            `https://picsum.photos/800/600?random=${Math.floor(Math.random() * 1000)}`,
+            `https://picsum.photos/800/600?random=${Math.floor(Math.random() * 1001)}`,
+            `https://picsum.photos/800/600?random=${Math.floor(Math.random() * 1002)}`,
         ];
     }
 };
@@ -98,6 +96,18 @@ const generateNeighborhoodVibe = async (property: Omit<Property, 'imageUrls' | '
         return "Não foi possível carregar a descrição do bairro, mas temos certeza que você vai adorar a área!";
     }
 };
+
+const parseAndValidateProperties = (jsonStr: string): Omit<Property, 'imageUrls' | 'neighborhoodVibe'>[] => {
+    const parsed = JSON.parse(jsonStr) as (Omit<Property, 'imageUrls' | 'neighborhoodVibe'> | null)[];
+    if (!Array.isArray(parsed)) {
+      throw new Error("API did not return a JSON array.");
+    }
+    // CRASH FIX: Filter out any null or incomplete items from the API response.
+    const validated = parsed.filter((p): p is Omit<Property, 'imageUrls' | 'neighborhoodVibe'> => 
+      p !== null && typeof p === 'object' && 'id' in p && 'title' in p && 'imagePrompt' in p
+    );
+    return validated;
+}
 
 export const generatePropertyListings = async (preferences: Preferences, setLoadingMessage: (msg: string) => void): Promise<Property[]> => {
   const prompt = generatePropertyListingsPrompt(preferences);
@@ -120,7 +130,7 @@ export const generatePropertyListings = async (preferences: Preferences, setLoad
       jsonStr = match[2].trim();
     }
     
-    const baseProperties = JSON.parse(jsonStr) as Omit<Property, 'imageUrls' | 'neighborhoodVibe'>[];
+    const baseProperties = parseAndValidateProperties(jsonStr);
     
     setLoadingMessage("Gerando imagens e relatórios de vizinhança...");
 
@@ -207,7 +217,7 @@ export const generateSimilarListings = async (preferences: Preferences, existing
       jsonStr = match[2].trim();
     }
     
-    const baseProperties = JSON.parse(jsonStr) as Omit<Property, 'imageUrls' | 'neighborhoodVibe'>[];
+    const baseProperties = parseAndValidateProperties(jsonStr);
     
     setLoadingMessage("Finalizando os detalhes extras...");
 
