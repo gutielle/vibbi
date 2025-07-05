@@ -39,8 +39,9 @@ const App: React.FC = () => {
   
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
   const [propertyForInfoRequest, setPropertyForInfoRequest] = useState<Property | null>(null);
-
+  
   const [isRefineSearchOpen, setIsRefineSearchOpen] = useState(false);
+
 
   const handleNext = () => setStep(prev => prev + 1);
   const handleBack = () => setStep(prev => prev - 1);
@@ -86,7 +87,6 @@ const App: React.FC = () => {
       const properties = await generatePropertyListings(preferences, setLoadingMessage);
       setListings(properties);
       setStep(6); 
-      setIsRefineSearchOpen(window.innerWidth > 768);
 
       const similarProps = await generateSimilarListings(preferences, properties, setLoadingMessage);
       setSimilarListings(similarProps);
@@ -109,6 +109,7 @@ const App: React.FC = () => {
       setLoadingMessage("Refinando sua busca...");
       const properties = await generatePropertyListings(preferences, setLoadingMessage);
       setListings(properties);
+      setIsRefineSearchOpen(false); // Close the panel after search
 
       const similarProps = await generateSimilarListings(preferences, properties, setLoadingMessage);
       setSimilarListings(similarProps);
@@ -290,33 +291,35 @@ const App: React.FC = () => {
                     <p className="text-lg md:text-xl text-gray-600 mt-4 max-w-3xl mx-auto">A Vibbi analisou seus desejos para encontrar estes lares especiais para você.</p>
                 </div>
 
-                <div className="max-w-4xl mx-auto bg-white p-6 rounded-xl shadow-md mb-10">
-                    <div className="flex justify-between items-center cursor-pointer" onClick={() => setIsRefineSearchOpen(prev => !prev)}>
-                        <h3 className="text-2xl font-display text-gray-800">Refinar Busca</h3>
+                <div className="max-w-4xl mx-auto bg-white p-4 rounded-xl shadow-md mb-10">
+                    <button 
+                        onClick={() => setIsRefineSearchOpen(prev => !prev)}
+                        className="w-full flex justify-between items-center text-left p-2"
+                    >
+                        <h3 className="text-2xl font-display text-gray-800">Alterar orçamento</h3>
                         <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 text-gray-600 transition-transform duration-300 ${isRefineSearchOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
-                    </div>
-
+                    </button>
                     {isRefineSearchOpen && (
-                         <div className="mt-6 animate-fade-in">
-                            <h4 className="text-lg font-bold text-gray-800 mb-4 text-center">Alterar orçamento</h4>
-                            <div className="flex flex-col md:flex-row items-center justify-center gap-4">
+                        <div className="mt-4 animate-fade-in">
+                            <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6">
                                 <div className="w-full md:w-auto">
-                                    <label className="block text-sm font-medium text-gray-700 text-center">Mínimo</label>
-                                    <input type="text" name="min" value={`R$ ${preferences.budget.min.toLocaleString('pt-BR')}`} onChange={handleBudgetChange} className="w-full p-3 border border-gray-300 rounded-lg text-center" />
+                                    <input type="text" name="min" value={`R$ ${preferences.budget.min.toLocaleString('pt-BR')}`} onChange={handleBudgetChange} placeholder="Orçamento Mínimo" className="w-full p-3 border border-gray-300 rounded-lg text-center" />
                                 </div>
                                 <div className="w-full md:w-auto">
-                                    <label className="block text-sm font-medium text-gray-700 text-center">Máximo</label>
-                                    <input type="text" name="max" value={`R$ ${preferences.budget.max.toLocaleString('pt-BR')}`} onChange={handleBudgetChange} className="w-full p-3 border border-gray-300 rounded-lg text-center" />
+                                    <input type="text" name="max" value={`R$ ${preferences.budget.max.toLocaleString('pt-BR')}`} onChange={handleBudgetChange} placeholder="Orçamento Máximo" className="w-full p-3 border border-gray-300 rounded-lg text-center" />
                                 </div>
-                                <button onClick={handleRefineSearch} className="w-full md:w-auto mt-4 md:mt-0 self-center md:self-end bg-amber-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-amber-600 transition-colors">
-                                    Buscar Novamente
-                                </button>
+                                <div className="w-full md:w-auto self-center">
+                                    <button onClick={handleRefineSearch} className="w-full bg-amber-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-amber-600 transition-colors">
+                                        Buscar Novamente
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
                 </div>
+
 
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {listings.map(prop => (
