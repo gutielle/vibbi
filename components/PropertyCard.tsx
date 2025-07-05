@@ -1,12 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Property } from '../types';
 
 interface PropertyCardProps {
   property: Property;
   onSchedule: (property: Property) => void;
   onInfoRequest: (property: Property) => void;
-  onCompareToggle: (property: Property) => void;
-  isInCompareList: boolean;
 }
 
 export const BedIcon: React.FC<{className?: string}> = ({className}) => (
@@ -48,12 +46,6 @@ const InfoIcon = ({ className = 'w-5 h-5' }) => (
     </svg>
 );
 
-const ScaleIcon = ({ className = 'w-5 h-5' }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l-6-2m6 2l3 1m-3-1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-    </svg>
-);
-
 const LightbulbIcon = ({ className = 'w-5 h-5' }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
@@ -61,10 +53,62 @@ const LightbulbIcon = ({ className = 'w-5 h-5' }) => (
 );
 
 
-const PropertyCard: React.FC<PropertyCardProps> = ({ property, onSchedule, onInfoRequest, onCompareToggle, isInCompareList }) => {
+const PropertyCard: React.FC<PropertyCardProps> = ({ property, onSchedule, onInfoRequest }) => {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // CRASH FIX: Ensure imageUrls is a valid array, otherwise use a placeholder.
+  const safeImageUrls = Array.isArray(property.imageUrls) && property.imageUrls.length > 0
+    ? property.imageUrls
+    : [`https://picsum.photos/800/600?random=${property.id}`];
+
+  const nextImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setCurrentImageIndex(prevIndex => (prevIndex + 1) % safeImageUrls.length);
+  };
+
+  const prevImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setCurrentImageIndex(prevIndex => (prevIndex - 1 + safeImageUrls.length) % safeImageUrls.length);
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden transform hover:-translate-y-2 transition-transform duration-300 ease-in-out flex flex-col">
-      <img className="w-full h-56 object-cover" src={property.imageUrl} alt={property.title} />
+      <div className="relative w-full h-56 group">
+        <img 
+          className="w-full h-full object-cover transition-transform duration-300" 
+          src={safeImageUrls[currentImageIndex]} 
+          alt={`${property.title} - Imagem ${currentImageIndex + 1}`} 
+        />
+        {safeImageUrls.length > 1 && (
+          <>
+            <button 
+              onClick={prevImage} 
+              aria-label="Imagem anterior"
+              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-40 text-white p-1 rounded-full hover:bg-opacity-60 transition-opacity opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            </button>
+            <button 
+              onClick={nextImage} 
+              aria-label="Próxima imagem"
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-40 text-white p-1 rounded-full hover:bg-opacity-60 transition-opacity opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            </button>
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex space-x-1.5">
+              {safeImageUrls.map((_, index) => (
+                <div 
+                  key={index} 
+                  className={`w-2 h-2 rounded-full transition-colors ${index === currentImageIndex ? 'bg-white' : 'bg-white bg-opacity-50'}`}
+                ></div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
       <div className="p-6 flex flex-col flex-grow">
         <h3 className="text-2xl font-display text-gray-800">{property.title}</h3>
         <p className="text-sm text-gray-500 mt-1">{property.address}</p>
@@ -120,26 +164,13 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property, onSchedule, onInf
               <CalendarIcon />
               <span>Agendar Visita</span>
             </button>
-            <div className="flex space-x-3">
-              <button
-                onClick={() => onInfoRequest(property)}
-                className="w-full bg-white text-gray-800 font-bold py-3 px-4 rounded-lg border-2 border-gray-300 hover:bg-gray-100 hover:border-gray-400 transition-colors duration-300 flex items-center justify-center space-x-2"
-              >
-                <InfoIcon />
-                <span>Informações</span>
-              </button>
-              <button
-                onClick={() => onCompareToggle(property)}
-                className={`w-full font-bold py-3 px-4 rounded-lg border-2 transition-colors duration-300 flex items-center justify-center space-x-2 ${
-                  isInCompareList 
-                  ? 'bg-amber-500 text-white border-amber-500 hover:bg-amber-600'
-                  : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-100 hover:border-gray-400'
-                }`}
-              >
-                <ScaleIcon />
-                <span>{isInCompareList ? 'Na Lista' : 'Comparar'}</span>
-              </button>
-            </div>
+            <button
+              onClick={() => onInfoRequest(property)}
+              className="w-full bg-white text-gray-800 font-bold py-3 px-4 rounded-lg border-2 border-gray-300 hover:bg-gray-100 hover:border-gray-400 transition-colors duration-300 flex items-center justify-center space-x-2"
+            >
+              <InfoIcon />
+              <span>Informações</span>
+            </button>
         </div>
       </div>
     </div>
