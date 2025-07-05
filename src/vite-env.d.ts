@@ -1,5 +1,1 @@
-declare var process: {
-  env: {
-    API_KEY: string;
-  };
-};
+/// <reference types="vite/client" />
