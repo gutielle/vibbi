@@ -4,7 +4,6 @@ import { Preferences, Property } from '../types';
 const getAiClient = () => {
     const apiKey = import.meta.env.VITE_API_KEY;
     if (!apiKey) {
-        // This error is now more user-friendly and guides them for Vercel deployment.
         throw new Error("A chave de API do Gemini não está configurada. Adicione VITE_API_KEY às suas variáveis de ambiente no Vercel e faça o redeploy.");
     }
     return new GoogleGenAI({ apiKey });
@@ -35,7 +34,7 @@ const generatePropertyListingsPrompt = (preferences: Preferences): string => {
     "bathrooms": "Number of bathrooms.",
     "sqft": "A realistic integer for square meters (m²), appropriate for the property size.",
     "description": "A compelling and evocative property description of 2-3 sentences, in Portuguese. This should contain enough detail to generate a representative image.",
-    "imagePrompt": "A detailed English prompt (15-20 words) for an image generation AI, describing key visual elements of the property to generate multiple images (exterior, interior, lifestyle). Example: 'A modern Brazilian villa, minimalist facade with natural wood accents, spacious open-concept living room with a view, infinity pool overlooking the ocean.'",
+    "imagePrompt": "A very short (10-15 words) English prompt for an image generation AI, describing the exterior of the house based on its features and style. Example: 'A modern Brazilian villa with a minimalist facade, large glass windows, a wooden deck, and surrounded by lush tropical gardens.'",
     "personalizedPitch": "A short, friendly paragraph written directly to ${preferences.name}, explaining why this specific house is a perfect fit for their priorities and desired features. Address them by name. Write this in Portuguese."
   }
 
@@ -43,7 +42,7 @@ const generatePropertyListingsPrompt = (preferences: Preferences): string => {
 `;
 };
 
-const generateNeighborhoodVibePrompt = (property: Omit<Property, 'imageUrls' | 'neighborhoodVibe'>, preferences: Preferences): string => {
+const generateNeighborhoodVibePrompt = (property: Omit<Property, 'imageUrl' | 'neighborhoodVibe'>, preferences: Preferences): string => {
   const allPriorities = [...preferences.priorities, preferences.otherPriorities].filter(Boolean).join(', ');
   return `
   As a local expert and travel writer, describe the neighborhood vibe for ${preferences.name} for the property at ${property.address}.
@@ -55,33 +54,26 @@ const generateNeighborhoodVibePrompt = (property: Omit<Property, 'imageUrls' | '
 };
 
 
-export const generatePropertyImages = async (imagePrompt: string): Promise<string[]> => {
+export const generatePropertyImage = async (imagePrompt: string): Promise<string> => {
     try {
         const ai = getAiClient();
         const response = await ai.models.generateImages({
             model: 'imagen-3.0-generate-002',
-            prompt: `Professional, photorealistic real estate photography of: ${imagePrompt}. Generate multiple varied views including exterior, interior (living room), and a key feature (like a backyard or balcony).`,
-            config: { numberOfImages: 3, outputMimeType: 'image/jpeg' },
+            prompt: `Professional, photorealistic real estate photography of: ${imagePrompt}`,
+            config: { numberOfImages: 1, outputMimeType: 'image/jpeg' },
         });
 
-        const imageUrls = response.generatedImages.map(img => `data:image/jpeg;base64,${img.image.imageBytes}`);
-        
-        if (imageUrls.length === 0) throw new Error("No images generated");
-
-        return imageUrls;
+        const base64ImageBytes: string = response.generatedImages[0].image.imageBytes;
+        return `data:image/jpeg;base64,${base64ImageBytes}`;
     } catch (error) {
-        console.error("Error generating property images, using placeholders", error);
+        console.error("Error generating property image, using placeholder", error);
         if (error instanceof Error && error.message.includes("API")) throw error;
-        // Return placeholders if generation fails for other reasons
-        return [
-            `https://picsum.photos/800/600?random=${Math.floor(Math.random() * 1000)}`,
-            `https://picsum.photos/800/600?random=${Math.floor(Math.random() * 1001)}`,
-            `https://picsum.photos/800/600?random=${Math.floor(Math.random() * 1002)}`,
-        ];
+        const randomSeed = Math.floor(Math.random() * 1000);
+        return `https://picsum.photos/800/600?random=${randomSeed}`;
     }
 };
 
-const generateNeighborhoodVibe = async (property: Omit<Property, 'imageUrls' | 'neighborhoodVibe'>, preferences: Preferences): Promise<string> => {
+const generateNeighborhoodVibe = async (property: Omit<Property, 'imageUrl' | 'neighborhoodVibe'>, preferences: Preferences): Promise<string> => {
     const prompt = generateNeighborhoodVibePrompt(property, preferences);
     try {
         const ai = getAiClient();
@@ -93,22 +85,23 @@ const generateNeighborhoodVibe = async (property: Omit<Property, 'imageUrls' | '
         return response.text;
     } catch (error) {
         console.error("Error generating neighborhood vibe:", error);
-         if (error instanceof Error && error.message.includes("API")) throw error;
+        if (error instanceof Error && error.message.includes("API")) throw error;
         return "Não foi possível carregar a descrição do bairro, mas temos certeza que você vai adorar a área!";
     }
 };
 
-const parseAndValidateProperties = (jsonStr: string): Omit<Property, 'imageUrls' | 'neighborhoodVibe'>[] => {
-    const parsed = JSON.parse(jsonStr) as (Omit<Property, 'imageUrls' | 'neighborhoodVibe'> | null)[];
+const parseAndValidateProperties = (jsonStr: string): Omit<Property, 'imageUrl' | 'neighborhoodVibe'>[] => {
+    const parsed = JSON.parse(jsonStr) as (Omit<Property, 'imageUrl' | 'neighborhoodVibe'> | null)[];
     if (!Array.isArray(parsed)) {
       throw new Error("API did not return a JSON array.");
     }
     // CRASH FIX: Filter out any null or incomplete items from the API response.
-    const validated = parsed.filter((p): p is Omit<Property, 'imageUrls' | 'neighborhoodVibe'> => 
+    const validated = parsed.filter((p): p is Omit<Property, 'imageUrl' | 'neighborhoodVibe'> => 
       p !== null && typeof p === 'object' && 'id' in p && 'title' in p && 'imagePrompt' in p
     );
     return validated;
 }
+
 
 export const generatePropertyListings = async (preferences: Preferences, setLoadingMessage: (msg: string) => void): Promise<Property[]> => {
   const prompt = generatePropertyListingsPrompt(preferences);
@@ -137,14 +130,14 @@ export const generatePropertyListings = async (preferences: Preferences, setLoad
 
     const enrichedProperties = await Promise.all(
         baseProperties.map(async (prop) => {
-            const [imageUrls, neighborhoodVibe] = await Promise.all([
-                generatePropertyImages(prop.imagePrompt),
+            const [imageUrl, neighborhoodVibe] = await Promise.all([
+                generatePropertyImage(prop.imagePrompt),
                 generateNeighborhoodVibe(prop, preferences)
             ]);
 
             return {
                 ...prop,
-                imageUrls,
+                imageUrl,
                 neighborhoodVibe,
             };
         })
@@ -186,7 +179,7 @@ const generateSimilarListingsPrompt = (preferences: Preferences, existingIds: st
     "bathrooms": "Number of bathrooms.",
     "sqft": "A realistic integer for square meters (m²).",
     "description": "A compelling and evocative property description of 2-3 sentences, in Portuguese.",
-    "imagePrompt": "A detailed English prompt (15-20 words) for an image generation AI, describing key visual elements to generate multiple images. Example: 'A rustic-chic farmhouse with a large porch, a cozy living room with a stone fireplace, and a gourmet kitchen.'",
+    "imagePrompt": "A short (10-15 words) English prompt for an image generation AI, describing the exterior of the house.",
     "personalizedPitch": "A short, friendly paragraph written to ${preferences.name}, explaining why this is a good fit.",
     "suggestionReason": "A single, compelling sentence in Portuguese explaining WHY this is a good ALTERNATIVE suggestion. For example: 'É um pouco acima do orçamento, mas oferece um raro terraço na cobertura.' or 'É uma casa em vez de um apartamento, oferecendo mais privacidade.'"
   }
@@ -224,14 +217,14 @@ export const generateSimilarListings = async (preferences: Preferences, existing
 
     const enrichedProperties = await Promise.all(
         baseProperties.map(async (prop) => {
-            const [imageUrls, neighborhoodVibe] = await Promise.all([
-                generatePropertyImages(prop.imagePrompt),
+            const [imageUrl, neighborhoodVibe] = await Promise.all([
+                generatePropertyImage(prop.imagePrompt),
                 generateNeighborhoodVibe(prop, preferences)
             ]);
 
             return {
                 ...prop,
-                imageUrls,
+                imageUrl,
                 neighborhoodVibe,
             };
         })
