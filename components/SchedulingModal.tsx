@@ -55,7 +55,8 @@ const SchedulingModal: React.FC<SchedulingModalProps> = ({ isOpen, onClose, prop
                 {!isConfirmed ? (
                     <div className="p-8">
                         <h2 className="text-3xl font-display text-gray-800">Agendar Visita</h2>
-                        <p className="text-gray-600 mt-2 mb-6">Você está agendando uma visita para: <strong className="font-semibold text-gray-700">{property?.title}</strong></p>
+                        <p className="text-gray-600 mt-2 mb-1">Você está agendando uma visita para: <strong className="font-semibold text-gray-700">{property?.title}</strong></p>
+                        <p className="text-sm text-gray-500 mt-1 mb-6">Nossos especialistas estão prontos para te apresentar este imóvel.</p>
 
                         <div className="space-y-6">
                             <div>
@@ -77,6 +78,7 @@ const SchedulingModal: React.FC<SchedulingModalProps> = ({ isOpen, onClose, prop
                                         </button>
                                     ))}
                                 </div>
+                                <p className="text-xs text-gray-500 mt-2 text-center">Horários populares são preenchidos rapidamente.</p>
                             </div>
                         </div>
 
@@ -86,15 +88,29 @@ const SchedulingModal: React.FC<SchedulingModalProps> = ({ isOpen, onClose, prop
                         </div>
                     </div>
                 ) : (
-                    <div className="p-8 text-center">
-                       <CheckCircleIcon className="w-16 h-16 text-teal-500 mx-auto" />
-                       <h2 className="text-3xl font-display text-gray-800 mt-4">Agendamento Solicitado!</h2>
-                       <p className="text-gray-600 mt-4 mb-8 max-w-md mx-auto">
-                           Sua solicitação de visita para <strong>{property?.title}</strong> foi enviada.
-                           Nossa equipe entrará em contato em breve para confirmar os detalhes.
+                    <div className="p-8 text-left">
+                       <div className="flex justify-center mb-4">
+                          <CheckCircleIcon className="w-16 h-16 text-teal-500 mx-auto" />
+                       </div>
+                       <h2 className="text-3xl font-display text-gray-800 mt-4 text-center">Solicitação Enviada!</h2>
+                       <p className="text-gray-600 mt-2 mb-6 text-center">
+                           O primeiro passo para conhecer seu novo lar foi dado.
                        </p>
+
+                       <div className="bg-gray-100 p-4 rounded-lg space-y-4 text-gray-700">
+                         <h3 className="font-bold text-lg text-gray-800 text-center">E agora?</h3>
+                         <div>
+                            <h4 className="font-bold">Confirmação em Breve</h4>
+                            <p className="text-sm">Um de nossos consultores Vibbi entrará em contato com você pelo telefone ou e-mail para confirmar a data e o horário da sua visita.</p>
+                         </div>
+                         <div>
+                            <h4 className="font-bold">Prepare-se para a Visita</h4>
+                            <p className="text-sm">Dica: Anote quaisquer perguntas que você tenha sobre o imóvel ou o bairro. Queremos que você tenha todas as informações para tomar a melhor decisão.</p>
+                         </div>
+                       </div>
+                       
                        <div className="mt-8 flex justify-center">
-                           <button onClick={handleClose} className="px-8 py-3 rounded-lg text-white bg-teal-600 hover:bg-teal-700 font-semibold transition-colors">Fechar</button>
+                           <button onClick={handleClose} className="w-full px-8 py-3 rounded-lg text-white bg-teal-600 hover:bg-teal-700 font-semibold transition-colors">Entendido, obrigado!</button>
                        </div>
                     </div>
                 )}
